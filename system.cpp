@@ -43,19 +43,6 @@ struct Bus
     int maintenanceInterval;
 };
 
-struct Ticket
-{
-    string ticketId;
-    string username;
-    string busNumber;
-    string seatNumber;
-    string origin;
-    string destination;
-    double fare;
-    time_t bookingTime;
-    bool isCancelled;
-};
-
 struct DriverAttendance
 {
     string username;
@@ -85,7 +72,6 @@ struct Complaint
 // Databases
 vector<User> users;
 vector<Bus> buses;
-vector<Ticket> tickets;
 vector<DriverAttendance> driverAttendances;
 vector<LostItem> lostItems;
 vector<Complaint> complaints;
@@ -93,7 +79,6 @@ vector<Complaint> complaints;
 // File names
 const string USERS_FILE = "users.txt";
 const string BUSES_FILE = "buses.txt";
-const string TICKETS_FILE = "tickets.txt";
 const string ATTENDANCE_FILE = "attendance.txt";
 const string LOSTITEMS_FILE = "lostitems.txt";
 const string COMPLAINTS_FILE = "complaints.txt";
@@ -268,55 +253,6 @@ void loadBuses()
             catch (...)
             {
                 cerr << "Warning: Skipped invalid bus record\n";
-            }
-        }
-    }
-}
-
-void saveTickets()
-{
-    ofstream file(TICKETS_FILE);
-    if (!file.is_open())
-    {
-        cerr << "Error saving tickets data!\n";
-        return;
-    }
-
-    for (const auto &ticket : tickets)
-    {
-        file << ticket.ticketId << "|" << ticket.username << "|" << ticket.busNumber << "|"
-             << ticket.seatNumber << "|" << ticket.origin << "|" << ticket.destination << "|"
-             << ticket.fare << "|" << ticket.bookingTime << "|" << ticket.isCancelled << "\n";
-    }
-}
-
-void loadTickets()
-{
-    ifstream file(TICKETS_FILE);
-    tickets.clear();
-    string line;
-    while (getline(file, line))
-    {
-        vector<string> parts = splitString(line, '|');
-        if (parts.size() == 9)
-        {
-            try
-            {
-                Ticket ticket;
-                ticket.ticketId = parts[0];
-                ticket.username = parts[1];
-                ticket.busNumber = parts[2];
-                ticket.seatNumber = parts[3];
-                ticket.origin = parts[4];
-                ticket.destination = parts[5];
-                ticket.fare = stod(parts[6]);
-                ticket.bookingTime = stol(parts[7]);
-                ticket.isCancelled = (parts[8] == "1");
-                tickets.push_back(ticket);
-            }
-            catch (...)
-            {
-                cerr << "Warning: Skipped invalid ticket record\n";
             }
         }
     }
@@ -797,110 +733,6 @@ void viewDriverAttendance(User *driver)
     }
 }
 
-// Ticket functions
-void bookTicket(User *user)
-{
-    if (!user)
-    {
-        cout << "You must be logged in to book a ticket!\n";
-        return;
-    }
-
-    // Show available buses
-    cout << "\n===== Available Buses =====\n";
-    for (const auto &bus : buses)
-    {
-        if (bus.status == ACTIVE)
-        {
-            cout << "Bus Number: " << bus.busNumber << " | Type: " << bus.type
-                 << " | Capacity: " << bus.capacity << "\n";
-        }
-    }
-
-    string busNumber;
-    cout << "Enter bus number: ";
-    cin >> busNumber;
-
-    auto busIt = find_if(buses.begin(), buses.end(),
-                         [&](const Bus &b)
-    {
-        return b.busNumber == busNumber && b.status == ACTIVE;
-    });
-
-    if (busIt == buses.end())
-    {
-        cout << "Bus not found or not available!\n";
-        return;
-    }
-
-    cout << "Available seats: " << busIt->capacity << "\n";
-    cout << "Enter seat number: ";
-    string seatNumber;
-    cin >> seatNumber;
-
-    // Check if seat is already booked
-    auto seatTaken = find_if(tickets.begin(), tickets.end(),
-                             [&](const Ticket &t)
-    {
-        return t.busNumber == busNumber && t.seatNumber == seatNumber && !t.isCancelled;
-    });
-
-    if (seatTaken != tickets.end())
-    {
-        cout << "This seat is already booked!\n";
-        return;
-    }
-
-    Ticket newTicket;
-    newTicket.ticketId = "TKT" + to_string(tickets.size() + 1);
-    newTicket.username = user->username;
-    newTicket.busNumber = busNumber;
-    newTicket.seatNumber = seatNumber;
-    newTicket.origin = "Station A";
-    newTicket.destination = "Station B";
-    newTicket.fare = 50.0;
-    newTicket.bookingTime = time(0);
-    newTicket.isCancelled = false;
-
-    tickets.push_back(newTicket);
-    saveTickets();
-    cout << "Ticket booked successfully!\n";
-    cout << "Ticket ID: " << newTicket.ticketId << "\n";
-    cout << "Fare: " << newTicket.fare << "\n";
-}
-
-void viewUserTickets(User *user)
-{
-    if (!user)
-    {
-        cout << "You must be logged in to view your tickets!\n";
-        return;
-    }
-
-    cout << "\n===== Your Tickets =====\n";
-    bool found = false;
-
-    for (const auto &ticket : tickets)
-    {
-        if (ticket.username == user->username && !ticket.isCancelled)
-        {
-            found = true;
-            cout << "Ticket ID: " << ticket.ticketId << "\n";
-            cout << "Bus Number: " << ticket.busNumber << "\n";
-            cout << "Seat Number: " << ticket.seatNumber << "\n";
-            cout << "From: " << ticket.origin << " To: " << ticket.destination << "\n";
-            cout << "Fare: " << ticket.fare << "\n";
-            cout << "Booked on: " << ctime(&ticket.bookingTime);
-            cout << "------------------------\n";
-        }
-    }
-
-    if (!found)
-    {
-        cout << "No active tickets found!\n";
-    }
-}
-
 // Bus management functions
 void addBus(User *user)
 {
@@ -1360,20 +1192,22 @@ void busUtilizationReport(User *admin)
     cout << "\n===== Bus Utilization Report =====\n";
     for (const auto &bus : buses)
     {
-        int trips = 0;
-        for (const auto &ticket : tickets)
-        {
-            if (ticket.busNumber == bus.busNumber && !ticket.isCancelled)
-            {
-                trips++;
-            }
-        }
-
         cout << "Bus " << bus.busNumber << ":\n";
-        cout << "Trips Completed: " << trips << "\n";
-        cout << "Capacity Utilization: "
-             << (trips * 100.0 / bus.capacity) << "%\n";
-        cout << "------------------------\n";
+        cout << "Capacity: " << bus.capacity << "\n";
+        cout << "Status: ";
+        switch (bus.status)
+        {
+        case ACTIVE:
+            cout << "Active";
+            break;
+        case MAINTENANCE:
+            cout << "In Maintenance";
+            break;
+        case OUT_OF_SERVICE:
+            cout << "Out of Service";
+            break;
+        }
+        cout << "\n------------------------\n";
     }
 }
 
@@ -1426,17 +1260,8 @@ void generateRevenueReport(User *user)
         return;
     }
 
-    double totalRevenue = 0;
-    for (const auto &ticket : tickets)
-    {
-        if (!ticket.isCancelled)
-        {
-            totalRevenue += ticket.fare;
-        }
-    }
-
     cout << "\n===== Revenue Report =====\n";
-    cout << "Total Revenue: " << totalRevenue << "\n";
+    cout << "No ticket system available in this version.\n";
 }
 
 // Menu functions
@@ -1483,8 +1308,7 @@ void showPassengerMenu()
     cout << "\n===== Passenger Menu =====\n";
     cout << "1. Lost and Found\n";
     cout << "2. Complain Box\n";
-    cout << "3. View My Tickets\n";
-    cout << "4. Logout\n";
+    cout << "3. Logout\n";
     cout << "Enter choice: ";
 }
 
@@ -1641,7 +1465,6 @@ int main()
     // Load all data
     loadUsers();
     loadBuses();
-    loadTickets();
     loadAttendances();
     loadLostItems();
     loadComplaints();
@@ -1674,7 +1497,6 @@ int main()
                 // Save all data before exiting
                 saveUsers();
                 saveBuses();
-                saveTickets();
                 saveAttendances();
                 saveLostItems();
                 saveComplaints();
@@ -1742,7 +1564,7 @@ int main()
                             break;
                         case 4:
                             deleteAllUsers(loggedInUser);
-                            break; // New case
+                            break;
                         case 5:
                             break;
                         default:
@@ -1839,9 +1661,6 @@ int main()
                     complainBox(loggedInUser);
                     break;
                 case 3:
-                    viewUserTickets(loggedInUser);
-                    break;
-                case 4:
                     logoutUser(loggedInUser);
                     break;
                 default:
