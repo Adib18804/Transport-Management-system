@@ -1,9 +1,7 @@
+//Transport Management System
 #include <bits/stdc++.h>
-#include <ctime>
-#include <iomanip>
-#include <limits>
-using namespace std;
 
+using namespace std;
 enum Role
 {
     ADMIN,
@@ -130,20 +128,20 @@ void createDefaultAdmin()
                [](const User &u)
 {
     return u.role == ADMIN;
-}))
-    {
-        return;
-    }
+}
+{
+    return;
+}
 
-    User admin;
-    admin.username = "admin";
-    admin.password = "admin123";
-    admin.role = ADMIN;
-    admin.adminRole = "CHAIRMAN";
+User admin;
+admin.username = "admin";
+                 admin.password = "admin123";
+                 admin.role = ADMIN;
+                 admin.adminRole = "CHAIRMAN";
 
-    users.push_back(admin);
-    cout << "SECURITY NOTICE: Default admin created (Change password immediately!)\n";
-    cout << "Username: admin\nPassword: admin123\n";
+                 users.push_back(admin);
+                 cout << "SECURITY NOTICE: Default admin created (Change password immediately!)\n";
+                 cout << "Username: admin\nPassword: admin123\n";
 }
 
 // File operations
