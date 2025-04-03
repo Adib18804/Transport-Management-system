@@ -128,7 +128,7 @@ void createDefaultAdmin()
                [](const User &u)
 {
     return u.role == ADMIN;
-}
+}))
 {
     return;
 }
